@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/qiniu/api.v7/auth/qbox"
@@ -48,7 +48,7 @@ func (c *Client) Request(method string, path string, body interface{}) (resData 
 	}
 	defer resp.Body.Close()
 
-	resData, ioErr := ioutil.ReadAll(resp.Body)
+	resData, ioErr := io.ReadAll(resp.Body)
 	if ioErr != nil {
 		err = ioErr
 		return

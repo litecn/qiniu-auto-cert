@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
-	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -72,7 +71,7 @@ func generatePrivateKey(file string) (crypto.PrivateKey, error) {
 }
 
 func loadPrivateKey(file string) (crypto.PrivateKey, error) {
-	keyBytes, err := ioutil.ReadFile(file)
+	keyBytes, err := os.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}
@@ -186,15 +185,15 @@ func saveCertInfo(domain string, cert *certificate.Resource) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(metaPath, metaData, 0600)
+	err = os.WriteFile(metaPath, metaData, 0600)
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(privateKeyPath, cert.PrivateKey, 0600)
+	err = os.WriteFile(privateKeyPath, cert.PrivateKey, 0600)
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(certPath, cert.Certificate, 0600)
+	err = os.WriteFile(certPath, cert.Certificate, 0600)
 	if err != nil {
 		return err
 	}
@@ -206,19 +205,19 @@ func loadCertResource(domain string) (*certificate.Resource, error) {
 	privateKeyPath := path.Join(os.TempDir(), "qiniu-auto-cert-"+domain+".key")
 	certPath := path.Join(os.TempDir(), "qiniu-auto-cert-"+domain+".crt")
 	cert := new(certificate.Resource)
-	meta, err := ioutil.ReadFile(metaPath)
+	meta, err := os.ReadFile(metaPath)
 	if err != nil {
 		return nil, err
 	}
 	if err := json.Unmarshal(meta, cert); err != nil {
 		return nil, err
 	}
-	privateKey, err := ioutil.ReadFile(privateKeyPath)
+	privateKey, err := os.ReadFile(privateKeyPath)
 	if err != nil {
 		return nil, err
 	}
 	cert.PrivateKey = privateKey
-	certData, err := ioutil.ReadFile(certPath)
+	certData, err := os.ReadFile(certPath)
 	if err != nil {
 		return nil, err
 	}

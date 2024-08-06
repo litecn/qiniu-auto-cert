@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/litecn/qiniu-auto-cert/acme"
+	"github.com/litecn/qiniu-auto-cert/qiniu"
 	"github.com/pkg/errors"
-	"github.com/tuotoo/qiniu-auto-cert/acme"
-	"github.com/tuotoo/qiniu-auto-cert/qiniu"
 )
 
 func main() {
