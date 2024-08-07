@@ -3,29 +3,81 @@ package main
 import (
 	"log"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/litecn/qiniu-auto-cert/acme"
 	"github.com/litecn/qiniu-auto-cert/qiniu"
 	"github.com/pkg/errors"
 )
 
+var NotAfter *time.Time
+
+func init() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+	NotAfter = timePtr(time.Now())
+}
+
+// 辅助函数：返回时间指针
+func timePtr(t time.Time) *time.Time {
+	return &t
+}
+
 func main() {
-	qnClient := qiniu.New(
-		os.Getenv("QINIU_ACCESSKEY"),
-		os.Getenv("QINIU_SECRETKEY"),
-	)
-	Domain := os.Args[1]
-	Email := os.Args[2]
-	if err := autoCert(qnClient, Domain, Email); err != nil {
-		log.Println(err)
+	// qnClient := qiniu.New(
+	// 	os.Getenv("QINIU_ACCESSKEY"),
+	// 	os.Getenv("QINIU_SECRETKEY"),
+	// )
+
+	Email := os.Getenv("EMAIL")
+	Domains := os.Getenv("DOMAIN")
+	// 使用正则表达式分割字符串
+	re := regexp.MustCompile(`[,\s|]+`)
+	Domain := re.Split(strings.TrimSpace(Domains), -1)
+
+	if len(Domain) < 1 {
+		log.Println("error: no domain")
+		return
+	}
+	log.Println(Domain)
+	// if err := autoCert(qnClient, Domain[0], Email); err != nil {
+	// 	log.Println(err)
+	// }
+	// for range time.Tick(time.Hour * 3) {
+	// 	if err := autoCert(qnClient, Domain[0], Email); err != nil {
+	// 		log.Println(err)
+	// 	}
+	// }
+	cert, err := acme.LoadCertResource(Domain[0])
+	if err != nil {
+		if NotAfter, err = obtainCert(Domain, Email, NotAfter); err != nil {
+			log.Println(err)
+		}
+	} else {
+		certInfo, err := acme.GetCertInfo(*cert)
+		log.Printf("证书信息:\n")
+		log.Printf("  序列号: %s\n", certInfo.CertID)
+		log.Printf("  域名: %s\n", certInfo.DNSNames)
+		log.Printf("  到期日: %s\n", certInfo.NotAfter.String())
+		log.Printf("  起始日: %s\n", certInfo.NotBefore.String())
+		if err != nil {
+			if NotAfter, err = obtainCert(Domain, Email, NotAfter); err != nil {
+				log.Println(err)
+			}
+		}
+		NotAfter = &certInfo.NotAfter
 	}
 	for range time.Tick(time.Hour * 3) {
-		if err := autoCert(qnClient, Domain, Email); err != nil {
+		if NotAfter, err = obtainCert(Domain, Email, NotAfter); err != nil {
 			log.Println(err)
 		}
 	}
+
 }
 
 func autoCert(qnClient *qiniu.Client, Domain, Email string) error {
@@ -60,8 +112,8 @@ func autoCert(qnClient *qiniu.Client, Domain, Email string) error {
 	return errors.WithMessage(err, "sslize domain failed")
 }
 
-func obtainAndUploadCert(qnClient *qiniu.Client, Domain, Email string) (*qiniu.UploadCertResp, error) {
-	cert, err := acme.ObtainCert(Email, Domain)
+func obtainAndUploadCert(qnClient *qiniu.Client, Domain string, Email string) (*qiniu.UploadCertResp, error) {
+	cert, err := acme.ObtainCert(Email, []string{Domain})
 	if err != nil {
 		return nil, err
 	}
@@ -75,4 +127,24 @@ func obtainAndUploadCert(qnClient *qiniu.Client, Domain, Email string) (*qiniu.U
 		return nil, err
 	}
 	return upload, nil
+}
+
+func obtainCert(Domain []string, Email string, NotAfter *time.Time) (*time.Time, error) {
+	// log.Println(NotAfter.Local().Format("2006-01-02 15:04:06"), time.Until(*NotAfter))
+	if time.Until(*NotAfter) > time.Hour*24*30 {
+		log.Println("not not after", NotAfter.String())
+		return NotAfter, nil
+	}
+	cert, err := acme.ObtainCert(Email, Domain)
+	if err != nil {
+		log.Println("cert error:", err)
+		return NotAfter, err
+	}
+	certInfo, err := acme.GetCertInfo(*cert)
+	if err != nil {
+		log.Println("cert info error:", err)
+		return NotAfter, err
+	}
+	NotAfter = &certInfo.NotAfter
+	return NotAfter, nil
 }

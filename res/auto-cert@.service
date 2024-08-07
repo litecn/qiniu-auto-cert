@@ -1,0 +1,14 @@
+[Unit]
+Description=七牛 CDN 证书自动化服务
+After=network-online.target
+
+[Service]
+ExecStart=/usr/local/autocert/autocert
+Restart=on-failure
+WorkingDirectory=/usr/local/autocert
+#Environment="QINIU_ACCESSKEY="
+#Environment="QINIU_SECRETKEY="
+#Environment="DNS_PROVIDER="
+
+[Install]
+WantedBy=multi-user.target

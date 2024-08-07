@@ -4,3 +4,4 @@ qiniu-auto-cert
 privateKey
 
 dist/
+.env
